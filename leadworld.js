@@ -266,7 +266,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
         }
         draw() {
             canvas_context.lineWidth = this.strokeWidth
-            canvas_context.strokeStyle = this.color
+            canvas_context.strokeStyle = this.strokeColor
             canvas_context.beginPath();
             if (this.radius > 0) {
                 canvas_context.arc(this.x, this.y, this.radius, 0, (Math.PI * 2), true)
@@ -765,13 +765,13 @@ window.addEventListener('DOMContentLoaded', (event) => {
             this.ray = []
         }
     }
-    function setUp(canvas_pass, style = "#000000") {
+    function setUp(canvas_pass, style = "#00dd00") {
         canvas = canvas_pass
         canvas_context = canvas.getContext('2d');
         canvas.style.background = style
         window.setInterval(function () {
             main()
-        }, 2)
+        }, 14)
         document.addEventListener('keydown', (event) => {
             keysPressed[event.key] = true;
         });
@@ -785,12 +785,42 @@ window.addEventListener('DOMContentLoaded', (event) => {
             TIP_engine.x = XS_engine
             TIP_engine.y = YS_engine
             TIP_engine.body = TIP_engine
+            selector.x = TIP_engine.x
+            selector.y = TIP_engine.y
             // example usage: if(object.isPointInside(TIP_engine)){ take action }
             window.addEventListener('pointermove', continued_stimuli);
         });
         window.addEventListener('pointerup', e => {
             window.removeEventListener("pointermove", continued_stimuli);
+            for (let t = 0; t < players[0].army.length; t++) {
+                if (selector.doesPerimeterTouch(players[0].army[t].body)) {
+                if( !players[0].selected.includes(players[0].army[t])){
+                    players[0].selected.push(players[0].army[t])
+                    players[0].army[t].body.strokeColor = "black"
+                }
+                }
+            }
+            seldraw = 0
+            console.log(players[0])
         })
+
+        window.addEventListener('contextmenu', e => {
+            e.preventDefault();
+            let TIP_enginer = {}
+            FLEX_engine = canvas.getBoundingClientRect();
+            XS_engine = e.clientX - FLEX_engine.left;
+            YS_engine = e.clientY - FLEX_engine.top;
+            TIP_enginer.x = XS_engine
+            TIP_enginer.y = YS_engine
+            TIP_enginer.body = TIP_enginer
+
+            if (players[0].selected.length > 0) {
+                for (let t = 0; t < players[0].selected.length; t++) {
+                    players[0].selected[t].target = TIP_enginer
+                }
+            }
+            return false
+        });
         function continued_stimuli(e) {
             FLEX_engine = canvas.getBoundingClientRect();
             XS_engine = e.clientX - FLEX_engine.left;
@@ -798,6 +828,10 @@ window.addEventListener('DOMContentLoaded', (event) => {
             TIP_engine.x = XS_engine
             TIP_engine.y = YS_engine
             TIP_engine.body = TIP_engine
+            selector.width = TIP_engine.x - selector.x
+            selector.height = TIP_engine.y - selector.y
+            seldraw = 1
+
         }
     }
     function gamepad_control(object, speed = 1) { // basic control for objects using the controler
@@ -891,13 +925,14 @@ window.addEventListener('DOMContentLoaded', (event) => {
             this.player = player
             this.health = 400
             this.maxhealth = this.health
-            this.melee = .5
+            this.melee = 1
             this.goldvalue = 20
-            this.movespeed = .999
+            this.movespeed = 2
             this.healthbar = new Rectangle(this.body.x - this.body.radius, this.body.y - (this.body.radius * 2), this.body.radius * 2, this.body.radius * .25, "#00ff00")
+            this.command = 0
 
             for (let t = 0; t < players.length; t++) {
-                if (players[t] != this.player) {
+                if (players[t] == this.player) {
                     this.target = players[t].base
                 }
             }
@@ -936,7 +971,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
                         // if (typeof this.target.body == "undefined") {
                         //      link2 = new LineOP(this.target, this.body)
                         // } else {
-                             link2 = new LineOP(this.target.body, this.body)
+                        link2 = new LineOP(this.target.body, this.body)
                         // }
                         if (link.hypotenuse() < link2.hypotenuse() || this.target.health <= 0) {
                             this.target = players[t].army[k]
@@ -951,11 +986,11 @@ window.addEventListener('DOMContentLoaded', (event) => {
                 let dummy = this.target.health
                 this.target.health -= this.melee
 
-                if(this.target.health > 0){
+                if (this.target.health > 0) {
                     let link = new LineOP(this.body, this.target.body, this.body.color, 2)
                     link.draw()
                 }
-                
+
 
 
 
@@ -1000,7 +1035,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
                 let dummy = this.target.health
                 this.target.health -= this.melee
 
-                if(this.target.health > 0){
+                if (this.target.health > 0) {
                     let link = new LineOP(this.body, this.target.body, this.body.color, 2)
                     link.draw()
                 }
@@ -1047,15 +1082,17 @@ window.addEventListener('DOMContentLoaded', (event) => {
             }
         }
         draw() {
-            this.aggro()
-            this.repel()
+            if (keysPressed['a'] || this.command == 1) {
+                this.aggro()
+            } else {
+                if (this.player != players[0]) {
+                    this.aggro()
+                }
+            }
             this.move()
+            this.repel()
             this.collide()
-            this.healthbar = new Rectangle(this.body.x - this.body.radius, this.body.y - (this.body.radius * 2), this.body.radius * 2, this.body.radius * .25, "#00ff00")
-            this.healthbar.width = (this.health / this.maxhealth) * this.body.radius * 2
-            this.healthbar.draw()
             this.body.draw()
-            this.healthbar.draw()
 
             // //////console.log(this.healthbar)
 
@@ -1066,8 +1103,10 @@ window.addEventListener('DOMContentLoaded', (event) => {
 
         }
         drawbar() {
-            this.healthbar = new Rectangle(this.body.x - this.body.radius, this.body.y - (this.body.radius * 2), this.body.radius * 2, this.body.radius * .25, "#00ff00")
+            this.healthbarx = new Rectangle((this.body.x - this.body.radius) - .5, (this.body.y - (this.body.radius * 2)) - .5, (this.body.radius * 2) + 1, (this.body.radius * .25) + 1, "black")
+            this.healthbar = new Rectangle(this.body.x - this.body.radius, this.body.y - (this.body.radius * 2), this.body.radius * 2, this.body.radius * .25, "#FFFF00")
             this.healthbar.width = (this.health / this.maxhealth) * this.body.radius * 2
+            this.healthbarx.draw()
             this.healthbar.draw()
         }
 
@@ -1080,12 +1119,22 @@ window.addEventListener('DOMContentLoaded', (event) => {
             this.base = new Circle(x, y, 100, "transparent")
             this.base.body = new Circle(x, y, 100, "transparent")
             this.spawner = 0
+            this.selected = []
 
+        }
+        steer() {
+            if(keysPressed['x']){
+                this.selected = []
+            }
+            for (let t = 0; t < this.selected.length; t++) {
+                this.selected[t].body.strokeColor = "black"
+            }
         }
 
 
         draw() {
             this.burial()
+            this.steer()
             this.command()
             this.burial()
             this.spawner++
@@ -1099,6 +1148,9 @@ window.addEventListener('DOMContentLoaded', (event) => {
                 this.army[t].drawbar()
             }
             for (let t = 0; t < this.army.length; t++) {
+                if(!this.selected.includes(this.army[t])){
+                    this.army[t].body.strokeColor = this.army[t].body.color
+                }
                 this.army[t].draw()
             }
             for (let t = 0; t < this.army.length; t++) {
@@ -1125,11 +1177,11 @@ window.addEventListener('DOMContentLoaded', (event) => {
 
 
     let intimates = new Player("#BBA088", 100, 100)
-    let adobrasigians = new Player("#FFDD00", 600, 600)
+    let adobrasigians = new Player("#FFAA00", 600, 600)
 
-
+    let selector = new Rectangle(0, 0, 0, 0, "#00000033")
     let players = []
-
+let seldraw = 0
     players.push(intimates)
     players.push(adobrasigians)
 
@@ -1137,18 +1189,31 @@ window.addEventListener('DOMContentLoaded', (event) => {
         canvas_context.clearRect(0, 0, canvas.width, canvas.height)  // refreshes the image
         gamepadAPI.update() //checks for button presses/stick movement on the connected controller)
         // game code goes here
-        if(Math.random() < .005){
+        if (Math.random() < .5) {
 
             for (let t = 0; t < players.length; t++) {
                 players[t].draw()
             }
+            for (let t = players.length - 1; t >= 0; t--) {
+                for (let k = 0; k < players[t].army.length; k++) {
+                    players[t].army[k].drawbar()
+                }
+            }
 
 
-        }else{
+        } else {
 
-        for (let t = players.length-1; t>= 0; t--) {
-            players[t].draw()
+            for (let t = players.length - 1; t >= 0; t--) {
+                players[t].draw()
+            }
+            for (let t = players.length - 1; t >= 0; t--) {
+                for (let k = 0; k < players[t].army.length; k++) {
+                    players[t].army[k].drawbar()
+                }
+            }
         }
+        if(seldraw > 0){
+            selector.draw()
         }
     }
 })
