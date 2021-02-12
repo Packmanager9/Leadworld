@@ -1,4 +1,5 @@
 
+let clickbreak = {}
 window.addEventListener('DOMContentLoaded', (event) => {
     const gamepadAPI = {
         controller: {},
@@ -774,35 +775,11 @@ window.addEventListener('DOMContentLoaded', (event) => {
         }, 14)
         document.addEventListener('keydown', (event) => {
             keysPressed[event.key] = true;
+            console.log(keysPressed)
         });
         document.addEventListener('keyup', (event) => {
             delete keysPressed[event.key];
         });
-        window.addEventListener('pointerdown', e => {
-            FLEX_engine = canvas.getBoundingClientRect();
-            XS_engine = e.clientX - FLEX_engine.left;
-            YS_engine = e.clientY - FLEX_engine.top;
-            TIP_engine.x = XS_engine
-            TIP_engine.y = YS_engine
-            TIP_engine.body = TIP_engine
-            selector.x = TIP_engine.x
-            selector.y = TIP_engine.y
-            // example usage: if(object.isPointInside(TIP_engine)){ take action }
-            window.addEventListener('pointermove', continued_stimuli);
-        });
-        window.addEventListener('pointerup', e => {
-            window.removeEventListener("pointermove", continued_stimuli);
-            for (let t = 0; t < players[0].army.length; t++) {
-                if (selector.doesPerimeterTouch(players[0].army[t].body)) {
-                if( !players[0].selected.includes(players[0].army[t])){
-                    players[0].selected.push(players[0].army[t])
-                    players[0].army[t].body.strokeColor = "black"
-                }
-                }
-            }
-            seldraw = 0
-            console.log(players[0])
-        })
 
         window.addEventListener('contextmenu', e => {
             e.preventDefault();
@@ -821,7 +798,38 @@ window.addEventListener('DOMContentLoaded', (event) => {
             }
             return false
         });
+        window.addEventListener('pointerdown', e => {
+            FLEX_engine = canvas.getBoundingClientRect();
+            XS_engine = e.clientX - FLEX_engine.left;
+            YS_engine = e.clientY - FLEX_engine.top;
+            TIP_engine.x = XS_engine
+            TIP_engine.y = YS_engine
+            TIP_engine.body = TIP_engine
+            selector.x = TIP_engine.x
+            selector.y = TIP_engine.y
+            // players[0].selected = []
+            if(!keysPressed['Shift'] && !keysPressed['Control']){
+                selectionbreakstart()
+            }
+            // example usage: if(object.isPointInside(TIP_engine)){ take action }
+            window.addEventListener('pointermove', continued_stimuli);
+        });
+        window.addEventListener('pointerup', e => {
+            window.removeEventListener("pointermove", continued_stimuli);
+            for (let t = 0; t < players[0].army.length; t++) {
+                if (selector.doesPerimeterTouch(players[0].army[t].body)) {
+                if( !players[0].selected.includes(players[0].army[t])){
+                    players[0].selected.push(players[0].army[t])
+                    players[0].army[t].body.strokeColor = "black"
+                }
+                }
+            }
+            seldraw = 0
+            console.log(players[0])
+        })
+
         function continued_stimuli(e) {
+            selectionbreakstop()
             FLEX_engine = canvas.getBoundingClientRect();
             XS_engine = e.clientX - FLEX_engine.left;
             YS_engine = e.clientY - FLEX_engine.top;
@@ -918,7 +926,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
 
     class Mob {
         constructor(x, y, player) {
-            this.body = new Circle(x + (Math.random()), y + (Math.random()), 10, player.color)
+            this.body = new Circle(x + (Math.random()), y + (Math.random()), 5, player.color)
             this.moveto = {}
             this.target = {}
             this.range = 25
@@ -1216,4 +1224,13 @@ let seldraw = 0
             selector.draw()
         }
     }
+
+function selectionbreakstart() {
+    clickbreak = setTimeout(function(){ players[0].selected = [] }, 10);
+  }
+  
+  function selectionbreakstop() {
+    clearTimeout(clickbreak);
+  }
 })
+
