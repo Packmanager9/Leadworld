@@ -131,6 +131,13 @@ window.addEventListener('DOMContentLoaded', (event) => {
             this.color = color
             this.width = width
         }
+
+        sqrDis() {
+            let xdif = this.object.x - this.target.x
+            let ydif = this.object.y - this.target.y
+            let hypotenuse = (xdif * xdif) + (ydif * ydif)
+            return (hypotenuse)
+        }
         angle() {
             return Math.atan2(this.object.y - this.target.y, this.object.x - this.target.x)
         }
@@ -775,7 +782,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
         }, 14)
         document.addEventListener('keydown', (event) => {
             keysPressed[event.key] = true;
-            console.log(keysPressed)
+            // console.log(keysPressed)
         });
         document.addEventListener('keyup', (event) => {
             delete keysPressed[event.key];
@@ -794,6 +801,9 @@ window.addEventListener('DOMContentLoaded', (event) => {
             if (players[0].selected.length > 0) {
                 for (let t = 0; t < players[0].selected.length; t++) {
                     players[0].selected[t].target = TIP_enginer
+                    players[0].selected[t].pather.target = TIP_enginer
+                    players[0].selected[t].pather.path()
+                    players[0].selected[t].step = 0
                 }
             }
             return false
@@ -825,7 +835,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
                 }
             }
             seldraw = 0
-            console.log(players[0])
+            // console.log(players[0])
         })
 
         function continued_stimuli(e) {
@@ -944,6 +954,11 @@ window.addEventListener('DOMContentLoaded', (event) => {
                     this.target = players[t].base
                 }
             }
+
+            this.pather = new Psychopather(this.body)
+            this.step = 0
+            this.pather.target = this.target
+            this.pather.path()
         }
         aggro() {
             if (typeof this.target.body == "undefined") {
@@ -952,7 +967,9 @@ window.addEventListener('DOMContentLoaded', (event) => {
                     if (players[t] != this.player) {
                         for (let k = 0; k < players[t].army.length; k++) {
                             this.target = players[t].army[k]
-
+                            this.pather.target = this.target
+                            this.pather.path()
+                            this.step = 0
                         }
                     }
                 }
@@ -983,6 +1000,9 @@ window.addEventListener('DOMContentLoaded', (event) => {
                         // }
                         if (link.hypotenuse() < link2.hypotenuse() || this.target.health <= 0) {
                             this.target = players[t].army[k]
+                            this.pather.target = this.target
+                            this.pather.path()
+                            this.step = 0
                         }
                     }
                 }
@@ -998,10 +1018,6 @@ window.addEventListener('DOMContentLoaded', (event) => {
                     let link = new LineOP(this.body, this.target.body, this.body.color, 2)
                     link.draw()
                 }
-
-
-
-
                 if (dummy > this.target.health) {
                     if (this.target.activeshield > 0) {
                         if (this.target.activeshield >= dummy - this.target.health) {
@@ -1018,8 +1034,19 @@ window.addEventListener('DOMContentLoaded', (event) => {
                 }
 
             } else if (link.hypotenuse() > this.range) {
-                let xvec = (this.target.body.x - this.body.x)
-                let yvec = (this.target.body.y - this.body.y)
+                // let xvec = (this.target.body.x - this.body.x)
+                // let yvec = (this.target.body.y - this.body.y)
+                for(let t = 0;t<20;t++){
+                    if(this.pather.waypoints[this.step].doesPerimeterTouch(this.body)){
+                        this.step++
+                        if(this.step >= this.pather.waypoints.length-1){
+                            this.step--
+                        }
+                    }
+                }
+
+                let xvec = (this.pather.waypoints[this.step].x - this.body.x)
+                let yvec = (this.pather.waypoints[this.step].y - this.body.y)
                 let k = 0
                 while (Math.abs(xvec) + Math.abs(yvec) > this.movespeed) {
                     xvec *= .99
@@ -1171,11 +1198,122 @@ window.addEventListener('DOMContentLoaded', (event) => {
                     this.army.splice(t, 1)
                 }
             }
-
         }
-
     }
 
+
+    class Vector{
+        constructor(object, xmom = 0, ymom = 0){
+            this.xmom = xmom
+            this.ymom = ymom
+            this.object = object
+        }
+        isToward(point){
+            let link = new LineOP(this.object, point)
+            let dis1 = link.sqrDis()
+            let dummy = new Point(this.object.x+this.xmom, this.object.y+this.ymom)
+            let link2 = new LineOP(dummy, point)
+            let dis2 = link2.sqrDis()
+            if(dis2 < dis1){
+                return true
+            }else{
+                return false
+            }
+        }
+        rotate(angleGoal){
+            let link = new Line(this.xmom, this.ymom, 0,0)
+            let length = link.hypotenuse()
+            let x = (length * Math.cos(angleGoal))
+            let y = (length * Math.sin(angleGoal))
+            this.xmom = x
+            this.ymom = y
+        }
+        magnitude(){
+            return (new Line(this.xmom, this.ymom, 0,0)).hypotenuse()
+        }
+        multiply(vect){
+            return new Vector(this.object, this.xmom*vect.xmom, this.ymom*vect.ymom)
+        }
+        add(vect){
+            return new Vector(this.object, this.xmom+vect.xmom, this.ymom+vect.ymom)
+        }
+        subtract(vect){
+            return new Vector(this.object, this.xmom-vect.xmom, this.ymom-vect.ymom)
+        }
+        divide(vect){
+            return new Vector(this.object, this.xmom/vect.xmom, this.ymom/vect.ymom)
+        }
+        angle(){
+            let dummy = new Point(this.object.x+this.xmom, this.object.y+this.ymom)
+            let link = new LineOP(this.object, dummy, "#FFFFFF", 1)
+            return link.angle()
+        }
+        draw(){
+            let dummy = new Point(this.object.x+this.xmom, this.object.y+this.ymom)
+            let link = new LineOP(this.object, dummy, "#FFFFFF", 1)
+            link.draw()
+        }
+    }
+
+
+    class Psychopather{
+        constructor(body){
+            this.body = body
+            this.obstacles = [...obstacles]
+            this.waypoints = [this.body]
+            this.target = new Circle(350,350, 3, "#00FFFF")
+        }
+        draw(){
+            this.body.draw()
+            for(let t = 0;t<this.obstacles.length;t++){
+                this.obstacles[t].draw()
+            }
+            this.path()
+        }
+        path(){
+            let raypoint = new Circle(this.body.x, this.body.y, 1, "#FF00FF", (this.target.x-this.body.x)*.0001, (this.target.y-this.body.y)*.0001)
+            let drawmod = 5
+            let ultramod = 20
+            this.waypoints = [this.body]
+            for(let t = 0;t<10000 && (new LineOP(raypoint, this.target)).sqrDis()>10;t++){
+                if(t%drawmod == 0){
+                    this.waypoints.push(new Circle(raypoint.x, raypoint.y, 3, "transparent"))
+                }
+                raypoint.move()
+                if(t %ultramod == 0){
+                  raypoint.xmom = (this.target.x-raypoint.x)*.001
+                  raypoint.ymom = (this.target.y-raypoint.y)*.001
+                }
+                for(let k = 0;k<this.obstacles.length;k++){
+                    if(this.obstacles[k].isPointInside(raypoint)){
+                        let vec = new Vector(raypoint, raypoint.xmom, raypoint.ymom)
+                        vec.rotate(vec.angle()+(Math.PI*.26))
+                        for(let t = 0;t<20;t++){
+                        raypoint.unmove()
+                        }
+                        if(vec.isToward(this.target)){
+                            raypoint.xmom = vec.xmom// + ((Math.random()-.5)/1000)
+                            raypoint.ymom = vec.ymom//+ ((Math.random()-.5)/1000)
+                        }else{
+                            raypoint.xmom = -vec.xmom//+ ((Math.random()-.5)/1000)
+                            raypoint.ymom = -vec.ymom//+ ((Math.random()-.5)/1000)
+                        }
+                        // t = 1
+                        ultramod+=10
+                    }
+                }
+            }
+        }
+    }
+
+
+    let obstacles = []
+
+    let ob = new Circle(350,350, 150, "#AA00FF")
+
+    obstacles.push(ob)
+
+    
 
     let setup_canvas = document.getElementById('canvas') //getting canvas from document
 
@@ -1195,6 +1333,10 @@ let seldraw = 0
 
     function main() {
         canvas_context.clearRect(0, 0, canvas.width, canvas.height)  // refreshes the image
+
+        for(let t = 0;t<obstacles.length;t++){
+            obstacles[t].draw()
+        }
         gamepadAPI.update() //checks for button presses/stick movement on the connected controller)
         // game code goes here
         if (Math.random() < .5) {
